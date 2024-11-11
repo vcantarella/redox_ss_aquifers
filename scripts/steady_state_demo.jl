@@ -185,7 +185,7 @@ with_theme(theme_latexfonts()) do
     ss_line = cₐ .- rate_ss/v .* x
     half_sat_line = Ka .* ones(size(x,1))
     ca_min_line = ca_min .* ones(size(x,1))
-    lines!(ax, x, ss_line, color = :darkred, linestyle = :dash, label = "Avection dominated prediction",
+    lines!(ax, x, ss_line, color = :darkred, linestyle = :dash, label = "Advection dominated prediction",
         linewidth = 2.5)
     text!(ax, L"C_A = C_A^{in} - r_{ss}/v \times x" ,position=(maximum(x)*0.5, cₐ .- rate_ss/v .* maximum(x)*0.5),
     align = (:left, :bottom), rotation = atan(-rate_ss/v,1)*180/π, fontsize = 28)
@@ -295,7 +295,7 @@ with_theme(theme_latexfonts()) do
         linewidth = 2.9)
     xl = 0:1:L
     ss_line = cₐ .- rate_ss/v .* xl
-    lines!(ax, xl, 1e4.*ss_line, color = :darkred, linestyle = :dash, label = "Avection steady-state prediction",
+    lines!(ax, xl, 1e4.*ss_line, color = :darkred, linestyle = :dash, label = "Advection steady-state prediction",
         linewidth = 2.1)
     Label(fig[1, 1, Top()], halign = :left, L"\times 10^{-4}")
     text!(ax, L"C_A = C_A^{in} - r_{ss}/v \times x" ,position=(maximum(x)*0.25, 1e4.*(cₐ .- rate_ss/v .* maximum(x)*0.25)-1.),
