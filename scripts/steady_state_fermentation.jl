@@ -105,6 +105,8 @@ Kd/Id < (μ₁/k_dec-1)*(1-k_dec2/μ₂)/(k_dec2/μ₂) ? println("Steady state 
 c2_min = Kd*k_dec2/μ₂/(1-k_dec2/μ₂)
 c2_max = Id*(μ₁/k_dec-1)
 ca_min = Ka*k_dec2/μ₂/(1-k_dec2/μ₂)
+D = k_dec2/μ₂*(c2_max+Kd)/c2_max
+ca_min_from_c2max = D/(1-D)*Ka
 c1_min = Kf*k_dec/μ₁/(1-k_dec/μ₁)
 #defining the transport parameters
 dx = 0.01 # [m]
@@ -117,6 +119,7 @@ x = 0:dx:L
 Dp = [2.8e-10 5.34e-10 5.34e-10] # pore diffusion coefficient [m^2/s] 
                          # - one value for each mobile compound
 D = αₗ * v .+ Dp # dispersion coefficient of all mobile compounds [m^2/s]
+ϕ = 0.3 # porosity [-]
 # inflow concentration
 cₐ = 6e-4
 c_in = [cₐ c1_min 0]
@@ -163,7 +166,7 @@ function pore_volume(t)
 end
 pore_volume.(sol.t)
 with_theme(theme_latexfonts()) do
-    fig = Figure(size = (800, 600))
+    fig = Figure(size = (504, 350))
     ax = Axis(fig[1, 1], xlabel = "x [m]", xlabelsize = 15,
         xticklabelsize = 18,
         ylabel = L"$C_A$ [mol L⁻¹]", ylabelsize = 15,
@@ -171,19 +174,22 @@ with_theme(theme_latexfonts()) do
     ax.xticks = 0:2:10
     ax.yticks = 0:1:6
     ylims!(ax, -1e-9, 6.3)
+    # axis with squared proportions
+    # I want one unit from the x-axis to be 1 unit in the y-axis
+    ax.aspect = DataAspect()
     ss_line = (cₐ .- rate_ss/v .* x).*1e4
     half_sat_line = Ka .* ones(size(x,1)).*1e4
-    ca_min_line = ca_min .* ones(size(x,1)).*1e4
+    ca_min_line = ca_min_from_c2max .* ones(size(x,1)).*1e4
     lines!(ax, x, ss_line, color = :darkred, linestyle = :dash, label = "Avection dominated prediction",
         linewidth = 2.5)
     text!(ax, L"C_A = C_A^{in} - r_{ss}/v \times x" ,position=(maximum(x)*0.5, (cₐ .- rate_ss/v .* maximum(x)*0.5).*1e4),
-    align = (:left, :bottom), rotation = atan(-rate_ss*1e4/v,1), fontsize = 28)
+    align = (:left, :bottom), rotation = atan(-rate_ss*1e4/v,1), fontsize = 15)
     lines!(ax, x, half_sat_line, color = :black, linestyle = :dash, label = "Half saturation constant",
         linewidth = 3.5)
-    text!(ax, L"K_A" ,position=(maximum(x)*0.3, (Ka+0.1e-4).*1e4), fontsize = 28, font="CMU Serif Bold")
+    text!(ax, L"K_A" ,position=(maximum(x)*0.3, (Ka+0.1e-4).*1e4), fontsize = 15, font="CMU Serif Bold")
     lines!(ax, x, ca_min_line, color = :darkblue, linestyle = :dash, label = "Minimum concentration",
         linewidth = 3.5)
-    text!(ax, L"C_A^{min}" ,position=(maximum(x)*0.3, (ca_min+0.1e-4).*1e4), fontsize = 28)
+    text!(ax, L"C_A^{min}" ,position=(maximum(x)*0.3, (ca_min+0.1e-4).*1e4), fontsize = 15)
     lines = lines!(ax, x, sol.u[1][:,1].*1e4, color = :blue, label = "Time: $(sol.t[1] / 86400) days",
         linewidth = 2.9)
     Label(fig[1, 1, Top()], halign = :left, L"\times 10^{-4}")
@@ -197,7 +203,8 @@ with_theme(theme_latexfonts()) do
 end
 
 # add a color range
-colormap = cgrad(:deep, norms)
+color_values = (sol.t)
+scale = cgrad(:deep, color_values ./ maximum(color_values))
 ashgray = "#B2BEB5"
 glaucous = "#6082B6"
 
