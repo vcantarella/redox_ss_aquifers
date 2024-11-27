@@ -205,7 +205,7 @@ end
 
 # make a color scale for the time variable
 color_values = (sol.t)
-scale = cgrad(:deep, olorc_values ./ maximum(color_values))
+scale = cgrad(:deep, color_values ./ maximum(color_values))
 # Plot the reaction rate as function of time and the outflowing concentration of the elements
 with_theme(theme_latexfonts()) do
     fig = Figure(size = (504, 500))

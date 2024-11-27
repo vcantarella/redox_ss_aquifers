@@ -9,7 +9,7 @@ println("Starting tests")
 ti = time()
 
 @testset "redox_steady_state_aquifers tests" begin
-    @test 1 == 1
+    include("test_conservative_transp.jl")
 end
 
 ti = time() - ti
