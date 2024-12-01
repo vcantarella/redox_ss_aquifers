@@ -54,7 +54,7 @@ jac_sparsity = Symbolics.jacobian_sparsity((du, u) -> fixed_decay!(du, u, p, 1),
 const_rhs! = ODEFunction(fixed_decay!, jac_prototype=jac_sparsity)
 prob = ODEProblem(const_rhs!, u0, tspan, p)
 # solving the problem
-sol = solve(prob, Rosenbrock23(), reltol = 1e-9, abstol = 1e-9)
+sol = solve(prob, Tsit5(), reltol = 1e-8, abstol = 1e-8)
 sol.t
 arr = zeros(length(sol.t), size(u0, 1))
 cr = zeros(length(sol.t), size(u0, 1))

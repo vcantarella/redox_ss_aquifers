@@ -255,7 +255,26 @@ with_theme(theme_latexfonts()) do
     save(plotsdir("reactBss.png"), fig, px_per_unit = 1200/96)
 end
 
-
+with_theme(theme_latexfonts()) do
+    fig = Figure(size = (504, 350))
+    ax2 = Axis(fig[1,1:4], xlabel = "PV [m]", xlabelsize = 15,
+        xticklabelsize = 14,
+        ylabel = "B [mol L⁻¹]", ylabelsize = 15,
+        yticklabelsize = 14)
+    ylims!(ax2, -1e-9, 2)
+    bss_line = Bss .* ones(size(sol.t,1)).*1e4
+    lines!(ax2, pore_volume.(sol.t), bss_line, color = :darkred, linestyle = :dash, label = "Steady-state biomass concentration",
+        linewidth = 2.5)
+    text!(ax2, L"B_{ss} = \frac{\alpha_E}{k_{dec}(1/Y_D - \eta)} - K_B" ,position=(maximum(x)*0.7, Bss.*1e4+0.05),
+    align = (:left, :bottom), fontsize = 13)
+    b_mid = [sol.u[i][Int(floor(size(u0,1)/2)),3] for i in 1:length(sol.t)]
+    lines = lines!(ax2, pore_volume.(sol.t), b_mid.*1e4, color = glaucous, label = "B at x = 5 m",
+        linewidth = 2.9)
+    Label(fig[1, 1:4, Top()], halign = :left, L"\times 10^{-4}")
+    fig
+    save(plotsdir("Bss.svg"), fig)
+    save(plotsdir("Bss.png"), fig, px_per_unit = 1200/96)
+end
 
 
 
@@ -295,7 +314,7 @@ with_theme(theme_latexfonts()) do
         linewidth = 2.9)
     xl = 0:1:L
     ss_line = cₐ .- rate_ss/v .* xl
-    lines!(ax, xl, 1e4.*ss_line, color = :darkred, linestyle = :dash, label = "Advection steady-state prediction",
+    lines!(ax, xl[ss_line .>= ca_min], 1e4.*ss_line[ss_line .>= ca_min], color = :darkred, linestyle = :dash, label = "Advection steady-state prediction",
         linewidth = 2.1)
     Label(fig[1, 1, Top()], halign = :left, L"\times 10^{-4}")
     text!(ax, L"C_A = C_A^{in} - r_{ss}/v \times x" ,position=(maximum(x)*0.25, 1e4.*(cₐ .- rate_ss/v .* maximum(x)*0.25)-1.),
@@ -340,7 +359,7 @@ with_theme(theme_latexfonts()) do
      align = (:left, :bottom), justification = :right, rotation = deg2rad(90))
     # Set axis properties
     reset_limits!(ax)
-    axislegend(ax, position = :rt)
+    # axislegend(ax, position = :rt)
 
     ax.xscale = CairoMakie.log10
     ax.yscale = CairoMakie.log10
