@@ -195,11 +195,11 @@ with_theme(theme_latexfonts()) do
     lines!(ax, x, ca_min_line, color = :darkblue, linestyle = :dash, label = "Minimum concentration",
         linewidth = 3.5)
     text!(ax, L"C_A^{min}" ,position=(maximum(x)*0.3, ca_min+0.1e-4), fontsize = 28)
-    lines = lines!(ax, x, sol.u[1][:,1], color = (glaucous, 0.6), label = "PV: $(pore_volume(sol.t[1])) days",
+    lines = lines!(ax, x, sol.u[1][:,1], color = (glaucous, 0.6), label = "PV: $(round(pore_volume(sol.t[i]), digits = 1)) days",
         linewidth = 2.9)
     record(fig, plotsdir("ca_animation.gif"), 1:length(sol.t); framerate = 30) do i
         lines[2] = sol.u[i][:, 1]
-        ax.title = "PV: $(pore_volume(sol.t[i])) days"
+        ax.title = "PV: $(round(pore_volume(sol.t[i]), digits = 1)) days"
     end
 end
 
