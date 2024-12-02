@@ -22,7 +22,26 @@ using LaTeXStrings
 using CSV
 using Symbolics
 
+"""
+    create_fixed_decay(v, De, dx, c_in, nmob)
 
+Creates an ODE right-hand side (RHS) function to solve the coupled reactive-transport problem for the model formulation.
+
+# Arguments
+- `v::Number`: The velocity.
+- `De::Vector`: The dispersion row vector.
+- `dx::Number`: The grid spacing.
+- `c_in::Vector`: The inflow concentration.
+- `nmob::Int`: The number of mobile species.
+
+# Returns
+- A function representing the ODE RHS for the coupled reactive-transport problem.
+- A function representing the Monod reaction rate for the electron acceptor
+# Example
+```julia
+rhs, ca_rate = create_fixed_decay(1.0, [0.1, 0.2], 0.01, 1.0, 2)
+```
+"""
 function create_fixed_decay(v, De, dx, c_in, nmob)
     # Defining the reaction rates model
     function monod_rate(Ca, Cd , B, μₘ, Ka, Kd, Ya,)
