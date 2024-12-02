@@ -1,4 +1,8 @@
-# redox_steady_state_aquifers
+# The electron-yielding capacity of the matrix can explain apparent zero-order reduction of electron-acceptors in aquifers at steady state
+
+This repository contain the numerical model used to confirm the theorectical derivations in the submitted paper that contains a mechanistic explanation to why the reduction of electron acceptors in natural settings often follow a zero-order rate in various settings. Please see the paper (to be submited, details soon) for the general explanations.
+
+![Concentration profile Plot](plots/ca_animation.gif)
 
 This code base is using the [Julia Language](https://julialang.org/) and
 [DrWatson](https://juliadynamics.github.io/DrWatson.jl/stable/)
