@@ -204,8 +204,10 @@ with_theme(theme_latexfonts()) do
     ss_line = cₐ .- rate_ss/v .* x
     half_sat_line = Ka .* ones(size(x,1))
     ca_min_line = ca_min .* ones(size(x,1))
-    lines!(ax, x, ss_line, color = :darkred, linestyle = :dash, label = "Advection dominated prediction",
-        linewidth = 2.5)
+    lines!(ax, x[ss_line .>= ca_min], ss_line[ss_line .>= ca_min], color = :darkred, linestyle = :dash, label = "Advection steady-state prediction",
+        linewidth = 2.3)
+    lines!(ax, x[ss_line .<= ca_min], fill(ca_min,sum(ss_line .<= ca_min)), color = :darkred, linestyle = :dash,
+        linewidth = 2.3)
     text!(ax, L"C_A = C_A^{in} - r_{ss}/v \times x" ,position=(maximum(x)*0.5, cₐ .- rate_ss/v .* maximum(x)*0.5),
     align = (:left, :bottom), rotation = atan(-rate_ss/v,1)*180/π, fontsize = 28)
     lines!(ax, x, half_sat_line, color = :black, linestyle = :dash, label = "Half saturation constant",
@@ -281,6 +283,7 @@ with_theme(theme_latexfonts()) do
         ylabel = "B [mol L⁻¹]", ylabelsize = 15,
         yticklabelsize = 14)
     ylims!(ax2, -1e-9, 2)
+    ax2.xticks = 0:2:10
     bss_line = Bss .* ones(size(sol.t,1)).*1e4
     lines!(ax2, pore_volume.(sol.t), bss_line, color = :darkred, linestyle = :dash, label = "Steady-state biomass concentration",
         linewidth = 2.5)
@@ -331,10 +334,12 @@ with_theme(theme_latexfonts()) do
     end
     lastline = lines!(ax, x, 1e4.*sol.u[end][:, 1], color = glaucous, label = "Profile at $(pore_volume(sol.t[end])) PV",
         linewidth = 2.9)
-    xl = 0:1:L
+    xl = 0:0.1:L
     ss_line = cₐ .- rate_ss/v .* xl
     lines!(ax, xl[ss_line .>= ca_min], 1e4.*ss_line[ss_line .>= ca_min], color = :darkred, linestyle = :dash, label = "Advection steady-state prediction",
-        linewidth = 2.1)
+        linewidth = 2.3)
+    lines!(ax, xl[ss_line .<= ca_min], 1e4.*fill(ca_min,sum(ss_line .<= ca_min)), color = :darkred, linestyle = :dash,
+        linewidth = 2.3)
     Label(fig[1, 1, Top()], halign = :left, L"\times 10^{-4}")
     text!(ax, L"C_A = C_A^{in} - r_{ss}/v \times x" ,position=(maximum(x)*0.25, 1e4.*(cₐ .- rate_ss/v .* maximum(x)*0.25)-1.),
         align = (:left, :bottom), rotation = atan(-1e4*rate_ss/v,1), fontsize = 23)
