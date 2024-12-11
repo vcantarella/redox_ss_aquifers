@@ -22,76 +22,7 @@ using LaTeXStrings
 using CSV
 using Symbolics
 
-"""
-    create_fixed_decay(v, De, dx, c_in, nmob)
-
-Creates an ODE right-hand side (RHS) function to solve the coupled reactive-transport problem for the model formulation.
-
-# Arguments
-- `v::Number`: The velocity.
-- `De::Vector`: The dispersion row vector.
-- `dx::Number`: The grid spacing.
-- `c_in::Vector`: The inflow concentration.
-- `nmob::Int`: The number of mobile species.
-
-# Returns
-- A function representing the ODE RHS for the coupled reactive-transport problem.
-- A function representing the Monod reaction rate for the electron acceptor
-# Example
-```julia
-rhs, ca_rate = create_fixed_decay(1.0, [0.1, 0.2], 0.01, 1.0, 2)
-```
-"""
-function create_fixed_decay(v, De, dx, c_in, nmob)
-    # Defining the reaction rates model
-    function monod_rate(Ca, Cd , B, μₘ, Ka, Kd, Ya,)
-        return -μₘ/Ya .* Ca ./ (Ka .+ Ca) .*
-         Cd ./ (Kd .+ Cd) .* B
-    end
-
-    function bac_rate(Ca, Cd , B, μₘ, Ka, Kd, k_dec)
-        return (μₘ .* Ca ./ (Ka .+ Ca) .*
-        Cd ./ (Kd .+ Cd) .- k_dec) .* B
-    end
-
-    function doc_rate(Ca, Cd, B, Cs, μₘ, Ka, Kd, Yd, α, Kb,Ks, k_dec, η)
-        return α.*B./(Kb.+B) .* Cs./(Cs.+Ks) - μₘ/Yd .* Ca ./ (Ka .+ Ca) .*
-        Cd ./ (Kd .+ Cd) .* B + η*k_dec .* B
-    end
-
-    function org_carbon_rate(B,Cs, α, Kb, Ks)
-        return -α.*B./(Kb.+B).* Cs./(Cs.+Ks)
-    end
-
-    function fixed_decay!(du, u, p ,t)
-        α = p[1]
-        Kb = p[2]
-        Ks = p[9]
-        μₘ = p[3]
-        Ka = p[4]
-        Kd = p[5]
-        Ya = p[6]
-        Yd = p[7]
-        k_dec = p[8]
-        η = p[10]
-
-
-        # transport
-        c_advec = [c_in;u[:,1:nmob]]
-        advec = -v .* diff(c_advec, dims=1) ./ dx
-        gradc = diff(u[:,1:nmob], dims=1)./dx
-        disp = ([gradc; zeros(1, nmob)]-[zeros(1, nmob); gradc]).* De ./ dx
-
-        du[:,1] .= advec[:,1] .+ disp[:,1] .+ monod_rate(u[:,1], u[:,2], u[:,3], μₘ, Ka, Kd, Ya)
-        du[:,2] .= advec[:,2] .+ disp[:,2] .+ doc_rate(u[:,1], u[:,2], u[:,3], u[:,4], μₘ, Ka, Kd, Yd, α, Kb, Ks, k_dec, η)
-        du[:,3] .= bac_rate(u[:,1], u[:,2], u[:,3], μₘ, Ka, Kd, k_dec)
-        du[:,4] .= org_carbon_rate(u[:,3], u[:,4], α, Kb, Ks)
-    nothing
-    end
-    return fixed_decay!, monod_rate
-end
-
-
+include(srcdir("ode_model.jl"))
 
 ## ---- normal parameters model ---------
 # Parameters
@@ -348,6 +279,123 @@ with_theme(theme_latexfonts()) do
     save(plotsdir("ca_animation.png"), fig, px_per_unit = 1200/96)
 end
 
+
+with_theme(theme_latexfonts()) do
+    fig = Figure( size = (504, 600))
+    ax = Axis(fig[1, 1], xlabel = "x [m]", xlabelsize = 15,
+        xticklabelsize = 18,
+        ylabel = L"$C_A$ [mol L^{-1}]", ylabelsize = 15,
+        yticklabelsize = 18)
+    ax.xticks = 0:2:10
+    ax.yticks = 0:2:6
+    ylims!(ax, -1e-2, 6.3)
+    
+    half_sat_line = Ka .* ones(size(x,1))*1e4
+    ca_min_line = ca_min .* ones(size(x,1))*1e4
+    bss_line = Bss .* ones(size(x,1)).*1e4
+    
+    lines!(ax, x, half_sat_line, color = :black, linestyle = :dash,
+        linewidth = 3.5)
+    text!(ax, L"K_A" ,position=(maximum(x)*0.3, 1e4*(Ka+0.1e-4)), fontsize = 20, font="CMU Serif Bold")
+    lines!(ax, x, ca_min_line, color = :darkblue, linestyle = :dash,
+        linewidth = 3.5)
+    text!(ax, L"C_{A,min}" ,position=(maximum(x)*0.3, 1e4*(ca_min+0.1e-4)), fontsize = 20)
+    lines = lines!(ax, x, 1e4.*sol.u[1][:,1], color = (ashgray, 0.6), label = "Transient profiles",
+        linewidth = 2.9)
+    for i in 2:10:(length(sol.t)-1)
+        lines3 = lines!(ax, x, 1e4.*sol.u[i][:, 1], color = (ashgray, 0.6),
+        linewidth = 2.9)
+    end
+    lastline = lines!(ax, x, 1e4.*sol.u[end][:, 1], color = glaucous, label = "Profile at $(pore_volume(sol.t[end])) PV",
+        linewidth = 2.9)
+    xl = 0:0.01:L
+    ss_line = cₐ .- rate_ss/v .* xl
+    ss_line = collect(ss_line)
+    ss_line[ss_line .< ca_min] .= ca_min
+    A_l = Fk .* (ss_line .+ Ka)./ss_line
+    cd_line = A_l .* Kd ./ (1 .- A_l)
+    lines!(ax, xl, 1e4.*ss_line, color = :darkred, linestyle = :dash, label = "Advection steady-state prediction",
+        linewidth = 2.3)
+    Label(fig[1, 1, Top()], halign = :left, L"\times 10^{-4}")
+    text!(ax, L"C_A = C_A^{in} - r_{ss}/v \times x" ,position=(maximum(x)*0.25, 1e4.*(cₐ .- rate_ss/v .* maximum(x)*0.25)-1.),
+        align = (:left, :bottom), rotation = atan(-1e4*rate_ss/v,1), fontsize = 23)
+    axislegend(position = :rt)
+
+    # Second graphh
+    ax2 = Axis(fig[2, 1], xlabel = "x [m]", xlabelsize = 15,
+        xticklabelsize = 18,
+        ylabel = L"$C_D$ [mol L^{-1}]", ylabelsize = 15,
+        yticklabelsize = 18)
+    ax2.xticks = 0:2:10
+    ax2.yticks = 0:2:6
+    ylims!(ax2, -1e-2, 6.3)
+    Kd_line = Kd .* ones(size(x,1))*1e5
+    cd_min_line = cd_min .* ones(size(x,1))*1e5
+    lines!(ax2, x, Kd_line, color = :black, linestyle = :dash,
+        linewidth = 3.5)
+    text!(ax2, L"K_D" ,position=(maximum(x)*0.3, 1e5*(Ka+0.1e-4)), fontsize = 20, font="CMU Serif Bold")
+    lines!(ax2, x, cd_min_line, color = :darkblue, linestyle = :dash,
+        linewidth = 3.5)
+    text!(ax2, L"C_{D,min}" ,position=(maximum(x)*0.3, 1e5*(ca_min+0.1e-4)), fontsize = 20)
+    lines = lines!(ax2, x, 1e5.*sol.u[1][:,2], color = (ashgray, 0.6), label = "Transient profiles",
+        linewidth = 2.9)
+    for i in 2:10:(length(sol.t)-1)
+        lines3 = lines!(ax2, x, 1e5.*sol.u[i][:, 2], color = (ashgray, 0.6),
+        linewidth = 2.9)
+    end
+    lastline = lines!(ax2, x, 1e5.*sol.u[end][:, 2], color = glaucous, label = "Profile at $(pore_volume(sol.t[end])) PV",
+        linewidth = 2.9)
+    lines!(ax2, xl, 1e5.*cd_line, color = :darkred, linestyle = :dash, label = "Advection steady-state prediction",
+        linewidth = 2.3)
+    Label(fig[2, 1, Top()], halign = :left, L"\times 10^{-5}")
+    # axislegend(position = :rt)
+
+    ax3 = Axis(fig[1, 2], xlabel = "x [m]", xlabelsize = 15,
+        xticklabelsize = 18,
+        ylabel = L"$r_{C_A}$ [mol L⁻¹ s⁻¹]", ylabelsize = 15,
+        yticklabelsize = 18)
+    ax3.xticks = 0:2:10
+    ylims!(ax3, -1e-9, 5)
+    ss_r_line = rate_ss .* ones(size(x,1)).*1e10
+    bss_line = Bss .* ones(size(x,1)).*1e4
+    Label(fig[1, 2, Top()], halign = :left, L"\times 10^{-10}")
+    Label(fig[1, 2, Top()], halign = :right, "b.", fontsize = 20,
+    font = :bold)
+    lines!(ax3, x, ss_r_line, color = :darkred, linestyle = :dash, label = "steady-state reaction rate",
+        linewidth = 2.5)
+    text!(ax, L"r_{ss} =\frac{k_{dec}}{Y_A} \left( \frac{\alpha_E}{k_{dec} (1/Y_D - \eta)} - K_B \right) " ,position=(maximum(x)*0.0, rate_ss.*1e10),
+    align = (:left, :bottom), fontsize = 10)
+    lines = lines!(ax3, x, -1e10.*ca_rate_fd(sol.u[1][:,1], sol.u[1][:,2], sol.u[1][:,3], μₘ, Ka, Kd, Ya), color = (ashgray, 0.6), label = "Transient profiles",
+        linewidth = 2.9)
+    for i in 2:10:(length(sol.t)-1)
+        lines = lines!(ax3, x, -1e10.*ca_rate_fd(sol.u[i][:,1], sol.u[i][:,2], sol.u[i][:,3], μₘ, Ka, Kd, Ya), color = (ashgray, 0.6), label = "Transient Profiles",
+        linewidth = 2.9)
+    end
+
+    ax4 = Axis(fig[2,2], xlabel = "x [m]", xlabelsize = 15,
+        xticklabelsize = 18,
+        ylabel = "B [mol L⁻¹]", ylabelsize = 15,
+        yticklabelsize = 18)
+    ylims!(ax4, -1e-9, 2)
+    lines!(ax4, x, bss_line, color = :darkred, linestyle = :dash, label = "Steady-state biomass concentration",
+        linewidth = 2.5)
+    text!(ax4, L"B_{ss} = \frac{\alpha_E}{k_{dec}(1/Y_D - \eta)} - K_B" ,position=(maximum(x)*0.03, Bss.*1e4),
+    align = (:left, :bottom), fontsize = 10)
+    l = lines = lines!(ax4, x, sol.u[1][:,3].*1e4, color = (ashgray, 0.6), label = "Transient profiles",
+        linewidth = 2.9)
+    for i in 2:10:(length(sol.t)-1)
+        lines = lines!(ax4, x, sol.u[i][:,3].*1e4, color = (ashgray, 0.6), label = "Transient profiles",
+        linewidth = 2.9)
+    end
+    Label(fig[2, 2, Top()], halign = :left, L"\times 10^{-4}")
+    # add the scale bar
+    Label(fig[2, 2, Top()], halign = :right, "d.", fontsize = 20,
+    font = :bold)
+
+    save(plotsdir("ca_cd_b.svg"), fig)
+    save(plotsdir("ca_cd_b.png"), fig, px_per_unit = 1200/96)
+end
+
 # Plotting the steady state concentration of bacteria
 
 # Assuming Ca, Cd, Cd_min, and Ca_min are defined
@@ -362,11 +410,17 @@ with_theme(theme_latexfonts()) do
     xhigh = 10. ^(-1.8)
     ylow = 10. ^(-7)
     yhigh = 10. ^(-1.8)
-    fig = Figure(size = (504, 350))
+    fig = Figure(size = (240, 240))
     ax = Axis(fig[1, 1], xlabel = L"$C_A$ $[mol\, L^{-1}]$", ylabel = L"$C_D$ $[mol\, L^{-1}]$",
-    xlabelsize = 15, ylabelsize = 15,
-    xticklabelsize = 13, yticklabelsize = 13,
-    limits = (xlow, xhigh, ylow, yhigh))
+    xlabelsize = 12, ylabelsize = 12,
+    xticklabelsize = 12, yticklabelsize = 12,
+    limits = (xlow, xhigh, ylow, yhigh),
+    xscale = CairoMakie.log10, yscale = CairoMakie.log10,
+    xminorticksvisible = true, xminorgridvisible = true,
+    yminorticksvisible = true, yminorgridvisible = true,
+    xminorticks = IntervalsBetween(5),
+    yminorticks = IntervalsBetween(5),
+    )
     # Plot Ca x Cd at steady-state
     lines!(ax, Ca, Cd, label = L"$B_{ss}$ $C_A$ x $C_D$ line",
     linewidth = 3.6, color = "steelblue")
@@ -374,19 +428,20 @@ with_theme(theme_latexfonts()) do
     a = Fk .* (ct .+ Ka)./ct
     cdt = a .* Kd ./ (1 .- a)
     # Plot Cd_min and Ca_min lines
-    Cd_line = range(cd_min, stop=1e-2, length=50)
-    Ca_line = range(ca_min, stop=1e-2, length=50)
-    lines!(ax, xlow:1e-7:xhigh, cd_min .* ones(length(xlow:1e-7:xhigh)), linestyle = (:dash,:loose), color = :black, linewidth = 2.5)
-    lines!(ax, ca_min .* ones(length(ylow:1e-7:yhigh)), ylow:1e-7:yhigh, linestyle = (:dashdot,:loose), color = :black, linewidth = 2.5)
-    text!(ax, L"C_{D,min}", position=(10. ^-4, cd_min), fontsize = 27, color = :black, align = (:left, :bottom), justification = :right)
-    text!(ax, L"C_{A,min}", position=(ca_min, 10. ^-6.3), fontsize = 27, color = :black,
+    Cd_line = range(cd_min, stop=1e-2, length=100)
+    Ca_line = range(ca_min, stop=1e-2, length=100)
+    lines!(ax, xlow:1e-7:xhigh, cd_min .* ones(length(xlow:1e-7:xhigh)), linestyle = (:dash,:loose), color = :black, linewidth = 2.2)
+    lines!(ax, ca_min .* ones(length(ylow:1e-7:yhigh)), ylow:1e-7:yhigh, linestyle = (:dashdot,:loose), color = :black, linewidth = 2.2)
+    text!(ax, L"C_{D,min}", position=(10. ^-4, cd_min), fontsize = 16, color = :black, align = (:left, :bottom), justification = :right)
+    text!(ax, L"C_{A,min}", position=(ca_min, 10. ^-6.3), fontsize = 16, color = :black,
      align = (:left, :bottom), justification = :right, rotation = deg2rad(90))
     # Set axis properties
     reset_limits!(ax)
+    ax.aspect = DataAspect()
     # axislegend(ax, position = :rt)
-
-    ax.xscale = CairoMakie.log10
-    ax.yscale = CairoMakie.log10
+    # ax.xscale = CairoMakie.log10
+    # ax.yscale = CairoMakie.log10
+    resize_to_layout!(fig)
     save(plotsdir("cacd.svg"), fig)
     save(plotsdir("cacd.png"), fig, px_per_unit = 1200/96)
 end

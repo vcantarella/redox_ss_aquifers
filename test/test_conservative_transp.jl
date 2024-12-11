@@ -43,8 +43,72 @@ function constant_injection(
     return nothing
 end
 
+## ---- normal parameters model ---------
+# Parameters
+nmob = 2
+nsub = 4
+
+# Defining the parameters
+α = 8e-10 #[mol L⁻¹ s⁻¹]
+Kb = 5e-5 #[mol L⁻¹] (equivalent water concentration)
+
+μₘ = 1e-5 #[s⁻¹]
+Ka = 5e-4 #[mol L⁻¹]
+Yd = 0.3 #[mol C_biomass/mol CD_substrate]
+γa = 1/25 # stoichiometric coefficient of e-acceptor in the anabolic reaction
+γc = 4/5 # stoichiometric coefficient of e-acceptor in the catabolic reaction
+Ya = 1/(γa+(1/Yd-1)*γc) # [mol C_biomass/mol CA_substrate]
+k_dec = 1.15e-6 #[s⁻¹]
+Kd = 1e-6 #[mol L⁻¹]
+η = 0.1 # [mol CD_substrate/mol C_biomass]
+Ks = 0.22*(α/(k_dec*(1/Yd-η)) - Kb)
+
+
+
+
+#defining the transport parameters
+dx = 0.01 # [m]
+L = 10 # [m]
+v = 0.5/86400 # [m/s]
+x = 0:dx:L
+
+#dispersion parameters
+αₗ = 0.1           # dispersivity [m] - same for all compounds
+Dp = [2.8e-10 5.34e-10] # pore diffusion coefficient [m^2/s] 
+                         # - one value for each mobile compound
+D = αₗ * v .+ Dp # dispersion coefficient of all mobile compounds [m^2/s]
+
+# inflow concentration
+cₐ = 6e-4
+cd_min = Kd*k_dec/μₘ/(1-k_dec/μₘ)
+ca_min = Ka*k_dec/μₘ/(1-k_dec/μₘ)
+c_in = [cₐ cd_min]
+
+
+
+
+
+#---- Model running: fixed decay+ maintenance-------
+# Initial conditions
+u0 = zeros(size(x,1), nsub)
+du0 = u0
+Bss = α/(k_dec*(1/Yd-η)) - Kb
+b₀ = 0.1
+rate_ss = α/(Ya*(1/Yd-η))-Kb*k_dec/Ya
+u0[:,3] .= Bss*b₀
+Cs₀ = 1 # mol/kg_sed
+ρₛ = 2.65 # [g/cm³]/[kg/L]
+ϕ = 0.3
+cf = (1-ϕ)*ρₛ/ϕ # [conversion from molC/kg_sed to molC/L_water]
+Cs₀ = cf*Cs₀
+u0[:,4] .= Cs₀
+
+# parameter vector and table:
+p = [α, Kb, μₘ, Ka, Kd, Ya, Yd, k_dec, Ks, η]
 
 include(srcdir("ode_model.jl"))
+fixed_decay!, ca_rate_fd= create_fixed_decay(v, D, dx, c_in, nmob)
+
 
 u0
 p
@@ -63,13 +127,16 @@ sol = solve(prob, Tsit5(), reltol = 1e-8, abstol = 1e-8)
 sol.t
 arr = zeros(length(sol.t), size(u0, 1))
 cr = zeros(length(sol.t), size(u0, 1))
+# Check discrepance between the analytical and numerical solutions
+norm_mean_squared_error(a, b) = sqrt(sum((a-b).^2)/length(a))/(maximum(a)-minimum(a))
+
 # Checking for each mobile species the fit to the analytical solution:
 for j in 1:nmob
     constant_injection(cr, collect(x), sol.t, c_in[j], u0[j], v, D[j])
     for i in eachindex(sol.t)
         arr[i,:] = sol.u[i][:,1]'
     end
-    @test isapprox(cr[2:end,:], arr[2:end,:] , atol = u0[j]*0.1, rtol=5e-2)
+    @test norm_mean_squared_error(cr[2:end,:], arr[2:end,:]) < 5e-2
 end
 
 # Plotting the results
