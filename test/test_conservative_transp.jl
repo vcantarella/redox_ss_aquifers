@@ -1,7 +1,10 @@
+using DrWatson
+@quickactivate "redox_steady_state_aquifers"
 using DifferentialEquations
 using Test
 using SpecialFunctions
 using CairoMakie
+using Symbolics
 """
 constant_injection(cr, x, t, c0, c_in, v, Dl)
 
@@ -39,7 +42,9 @@ function constant_injection(
     end
     return nothing
 end
-include("../scripts/steady_state_demo.jl")
+
+
+include(srcdir("ode_model.jl"))
 
 u0
 p
