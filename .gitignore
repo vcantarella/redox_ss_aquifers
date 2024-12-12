@@ -8,6 +8,8 @@
 # /plots
 /notebooks
 /_research
+# SVG IS TOO HEAvy
+/plots/ca_cd_b.svg
 
 ################################################################################
 #                                    Julia                                     #
