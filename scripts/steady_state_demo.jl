@@ -122,6 +122,7 @@ norms = color_values ./ maximum(color_values)
 colormap = cgrad(:deep, norms)
 ashgray = "#B2BEB5"
 glaucous = "#6082B6"
+crimson = "#DC143C"
 
 with_theme(theme_latexfonts()) do
     fig = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98), size = (800, 600))
@@ -135,9 +136,9 @@ with_theme(theme_latexfonts()) do
     ss_line = cₐ .- rate_ss/v .* x
     half_sat_line = Ka .* ones(size(x,1))
     ca_min_line = ca_min .* ones(size(x,1))
-    lines!(ax, x[ss_line .>= ca_min], ss_line[ss_line .>= ca_min], color = :darkred, linestyle = :dash, label = "Advection steady-state prediction",
+    lines!(ax, x[ss_line .>= ca_min], ss_line[ss_line .>= ca_min], color = crimson, linestyle = :dash, label = "Advection steady-state prediction",
         linewidth = 2.3)
-    lines!(ax, x[ss_line .<= ca_min], fill(ca_min,sum(ss_line .<= ca_min)), color = :darkred, linestyle = :dash,
+    lines!(ax, x[ss_line .<= ca_min], fill(ca_min,sum(ss_line .<= ca_min)), color = crimson, linestyle = :dash,
         linewidth = 2.3)
     text!(ax, L"C_A = C_A^{in} - r_{ss}/v \times x" ,position=(maximum(x)*0.5, cₐ .- rate_ss/v .* maximum(x)*0.5),
     align = (:left, :bottom), rotation = atan(-rate_ss/v,1)*180/π, fontsize = 28)
@@ -172,7 +173,7 @@ with_theme(theme_latexfonts()) do
     Label(fig[1, 1:4, Top()], halign = :left, L"\times 10^{-10}")
     Label(fig[1, 1:4, Top()], halign = :right, "a.", fontsize = 20,
     font = :bold)
-    lines!(ax, x, ss_line, color = :darkred, linestyle = :dash, label = "steady-state reaction rate",
+    lines!(ax, x, ss_line, color = crimson, linestyle = :dash, label = "steady-state reaction rate",
         linewidth = 2.5)
     text!(ax, L"r_{ss} =\frac{k_{dec}}{Y_A} \left( \frac{\alpha_E}{k_{dec} (1/Y_D - \eta)} - K_B \right) " ,position=(maximum(x)*0.0, rate_ss.*1e10),
     align = (:left, :bottom), fontsize = 10)
@@ -187,7 +188,7 @@ with_theme(theme_latexfonts()) do
         ylabel = "B [mol L⁻¹]", ylabelsize = 15,
         yticklabelsize = 14)
     ylims!(ax2, -1e-9, 2)
-    lines!(ax2, x, bss_line, color = :darkred, linestyle = :dash, label = "Steady-state biomass concentration",
+    lines!(ax2, x, bss_line, color = crimson, linestyle = :dash, label = "Steady-state biomass concentration",
         linewidth = 2.5)
     text!(ax2, L"B_{ss} = \frac{\alpha_E}{k_{dec}(1/Y_D - \eta)} - K_B" ,position=(maximum(x)*0.03, Bss.*1e4),
     align = (:left, :bottom), fontsize = 10)
@@ -216,7 +217,7 @@ with_theme(theme_latexfonts()) do
     ylims!(ax2, -1e-9, 2)
     ax2.xticks = 0:2:10
     bss_line = Bss .* ones(size(sol.t,1)).*1e4
-    lines!(ax2, pore_volume.(sol.t), bss_line, color = :darkred, linestyle = :dash, label = "Steady-state biomass concentration",
+    lines!(ax2, pore_volume.(sol.t), bss_line, color = crimson, linestyle = :dash, label = "Steady-state biomass concentration",
         linewidth = 2.5)
     text!(ax2, L"B_{ss} = \frac{\alpha_E}{k_{dec}(1/Y_D - \eta)} - K_B" ,position=(maximum(x)*0.7, Bss.*1e4+0.05),
     align = (:left, :bottom), fontsize = 13)
@@ -267,9 +268,9 @@ with_theme(theme_latexfonts()) do
         linewidth = 2.9)
     xl = 0:0.1:L
     ss_line = cₐ .- rate_ss/v .* xl
-    lines!(ax, xl[ss_line .>= ca_min], 1e4.*ss_line[ss_line .>= ca_min], color = :darkred, linestyle = :dash, label = "Advection steady-state prediction",
+    lines!(ax, xl[ss_line .>= ca_min], 1e4.*ss_line[ss_line .>= ca_min], color = crimson, linestyle = :dash, label = "Advection steady-state prediction",
         linewidth = 2.3)
-    lines!(ax, xl[ss_line .<= ca_min], 1e4.*fill(ca_min,sum(ss_line .<= ca_min)), color = :darkred, linestyle = :dash,
+    lines!(ax, xl[ss_line .<= ca_min], 1e4.*fill(ca_min,sum(ss_line .<= ca_min)), color = crimson, linestyle = :dash,
         linewidth = 2.3)
     Label(fig[1, 1, Top()], halign = :left, L"\times 10^{-4}")
     text!(ax, L"C_A = C_A^{in} - r_{ss}/v \times x" ,position=(maximum(x)*0.25, 1e4.*(cₐ .- rate_ss/v .* maximum(x)*0.25)-1.),
@@ -284,22 +285,32 @@ Ca = 10 .^(range(log10(6.5e-5), stop=log10(1e-2), length=200))
 Fk = k_dec/μₘ
 A = Fk .* (Ca .+ Ka)./Ca
 Cd = A .* Kd ./ (1 .- A)
-
-
+crimson = "#DC143C"
+pvs = pore_volume.(sol.t) # calculate the pore volumes
+pvs_index0 = findall(pvs .<= 2.2) # selecint the pore volumes to plot
+pvs_index1 = pvs_index0[2:20:end]
+pvs = pvs[pvs .<= 2.2]
+pvs = pvs[2:20:end]
+color_values = (pvs)
+scale = cgrad(:imola10, color_values ./ maximum(color_values), rev = true,# scale = :exp,
+    categorical = true)
+final_color = "#0B192C"
 with_theme(theme_latexfonts()) do
-    labelsize = 12
-    ticksize = 11
-    line_text = 13
-    minor_line = 1.7
-    major_line = 2.3
-    title = 20
-    fig = Figure( size = (504, 504))
+    labelsize = 11
+    ticksize = 10
+    line_text = 10
+    minor_line = 1.5
+    major_line = 2.6
+    title = 12
+    width = 225
+    height = 8/10*width
+    fig = Figure( size = (6.8*96, 6*96))
     ax = Axis(fig[1:3, 1:5], xlabelsize = labelsize,
         xticklabelsize = ticksize,
         ylabel = L"$C_A$ [mol L^{-1}]", ylabelsize = labelsize,
         yticklabelsize = ticksize,
-        xgridwidth = 0.5, ygridwidth = 0.5)
-    # ax.aspect = DataAspect()
+        xgridwidth = 0.5, ygridwidth = 0.5,
+        width = width, height = height)
     ax.xticks = 0:2:10
     ax.yticks = 0:2:6
     ylims!(ax, -1e-2, 6.3)
@@ -313,13 +324,15 @@ with_theme(theme_latexfonts()) do
     lines!(ax, x, ca_min_line, color = :darkblue, linestyle = :dash,
         linewidth = major_line)
     text!(ax, L"C_{A,min}" ,position=(maximum(x)*0.3, 1e4*(ca_min+0.1e-4)), fontsize = line_text)
-    lines = lines!(ax, x, 1e4.*sol.u[1][:,1], color = (ashgray, 0.6), label = "Transient profiles",
+    lines = lines!(ax, x, 1e4.*sol.u[1][:,1], color = (ashgray, 0.7), label = "Transient profiles",
         linewidth = minor_line)
-    for i in 2:10:(length(sol.t)-1)
-        lines3 = lines!(ax, x, 1e4.*sol.u[i][:, 1], color = (ashgray, 0.6),
+    k = 1
+    for i in pvs_index1# 2:10:(length(sol.t)-1)
+        lines3 = lines!(ax, x, 1e4.*sol.u[i][:, 1], color = (scale[k], 0.7),
         linewidth = minor_line)
+        k+=1
     end
-    lastline = lines!(ax, x, 1e4.*sol.u[end][:, 1], color = glaucous, label = "Profile at $(pore_volume(sol.t[end])) PV",
+    lastline = lines!(ax, x, 1e4.*sol.u[end][:, 1], color = final_color, label = "Profile at $(pore_volume(sol.t[end])) PV",
         linewidth = major_line)
     xl = 0:0.01:L
     ss_line = cₐ .- rate_ss/v .* xl
@@ -327,13 +340,12 @@ with_theme(theme_latexfonts()) do
     ss_line[ss_line .< ca_min] .= ca_min
     A_l = Fk .* (ss_line .+ Ka)./ss_line
     cd_line = A_l .* Kd ./ (1 .- A_l)
-    lines!(ax, xl, 1e4.*ss_line, color = :darkred, linestyle = :dash, label = "Analytical prediction",
+    lines!(ax, xl, 1e4.*ss_line, color = crimson, linestyle = :dash, label = "Analytical prediction",
         linewidth = major_line)
     Label(fig[1:3, 1:5, Top()], halign = :left, L"\times 10^{-4}", fontsize = 10)
     text!(ax, L"C_A = C_A^{in} - r_{ss}/v \times x" ,position=(maximum(x)*0.2, 1e4.*(cₐ .- rate_ss/v .* maximum(x)*0.2)-1.),
         align = (:left, :bottom), rotation = atan(-1e4*rate_ss/v,1)-0.15, fontsize = line_text)
-    Label(fig[1:3, 1:5, Top()], halign = :center, L"a. $C_A$", fontsize = title,
-    font = :bold)
+    Label(fig[1:3, 1:5, Top()], halign = :center, "a. Electron acceptor", fontsize = title)
     # axislegend(position = :rt)
 
     # Second graphh
@@ -341,38 +353,35 @@ with_theme(theme_latexfonts()) do
         xticklabelsize = ticksize,
         ylabel = L"$C_D$ [mol L^{-1}]", ylabelsize = labelsize,
         yticklabelsize = ticksize,
-        xgridwidth = 0.5, ygridwidth = 0.5)
+        xgridwidth = 0.5, ygridwidth = 0.5,
+        width = width, height = height)
     ax2.xticks = 0:2:10
     ax2.yticks = 0:1:3
     ylims!(ax2, -1e-2, 3.1)
     Kd_line = Kd .* ones(size(x,1))*1e5
     cd_min_line = cd_min .* ones(size(x,1))*1e5
-    # lines!(ax2, x, Kd_line, color = :black, linestyle = :dash,
-    #     linewidth = major_line)
-    # text!(ax2, L"K_D" ,position=(maximum(x)*0.3, 1e5*(Ka+0.1e-4)), fontsize = line_text, font="CMU Serif Bold")
-    # lines!(ax2, x, cd_min_line, color = :darkblue, linestyle = :dash,
-    #     linewidth = major_line)
-    # text!(ax2, L"C_{D,min}" ,position=(maximum(x)*0.3, 1e5*(ca_min+0.1e-4)), fontsize = line_text)
-    lines = lines!(ax2, x, 1e5.*sol.u[1][:,2], color = (ashgray, 0.6), label = "Transient profiles",
+    lines = lines!(ax2, x, 1e5.*sol.u[1][:,2], color = (ashgray, 0.0), #label = "Transient profiles",
         linewidth = minor_line)
-    for i in 2:10:(length(sol.t)-1)
-        lines3 = lines!(ax2, x, 1e5.*sol.u[i][:, 2], color = (ashgray, 0.6),
+    k = 1
+    for i in pvs_index1
+        lines3 = lines!(ax2, x, 1e5.*sol.u[i][:, 2], color = (scale[k], 0.7),
         linewidth = 2.9)
+        k+=1
     end
-    lastline = lines!(ax2, x, 1e5.*sol.u[end][:, 2], color = glaucous, label = "Profile at $(pore_volume(sol.t[end])) PV",
+    lastline = lines!(ax2, x, 1e5.*sol.u[end][:, 2], color = final_color, label = "Profile at $(pore_volume(sol.t[end])) PV",
         linewidth = major_line)
-    lines!(ax2, xl, 1e5.*cd_line, color = :darkred, linestyle = :dash, label = "Advection steady-state prediction",
+    lines!(ax2, xl, 1e5.*cd_line, color = crimson, linestyle = :dash, label = "Advection steady-state prediction",
         linewidth = major_line)
     Label(fig[4:6, 1:5, Top()], halign = :left, L"\times 10^{-5}", fontsize = 10)
-    Label(fig[4:6, 1:5, Top()], halign = :center, L"c. $C_D$", fontsize = title,
-    font = :bold)
+    Label(fig[4:6, 1:5, Top()], halign = :center, "c. Electron donor", fontsize = title)
     # axislegend(position = :rt)
 
     ax3 = Axis(fig[1:3, 6:10], xlabelsize = labelsize,
         xticklabelsize = ticksize,
         ylabel = L"$r_{C_A}$ [mol L⁻¹ s⁻¹]", ylabelsize = labelsize,
         yticklabelsize = ticksize,
-        xgridwidth = 0.5, ygridwidth = 0.5)
+        xgridwidth = 0.5, ygridwidth = 0.5,
+        width = width, height = height)
     ax3.xticks = 0:2:10
     ax3.yticks = 0:1.6:4.8
     ylims!(ax3, -1e-9, 5)
@@ -381,47 +390,60 @@ with_theme(theme_latexfonts()) do
     bss_line = Bss .* ones(size(xl,1)).*1e4
     bss_line[ss_line .<= ca_min] .= 0
     Label(fig[1:3, 6:10, Top()], halign = :left, L"\times 10^{-10}", fontsize = 10)
-    Label(fig[1:3, 6:10, Top()], halign = :center, L"b. $r_{C_A}$", fontsize = title,
-    font = :bold)
-    text!(ax3, L"r_{ss} =\frac{k_{dec}}{Y_A} \left( \frac{\alpha_E}{k_{dec} (1/Y_D - \eta)} - K_B \right) " ,position=(maximum(x)*0.0, rate_ss.*1e10),
+    Label(fig[1:3, 6:10, Top()], halign = :center, "b. Reaction rate", fontsize = title)
+    text!(ax3, L"r_{ss} =\frac{k_{dec}}{Y_A} \left( \frac{\alpha_E}{k_{dec} (1/Y_D - \eta)} - K_B \right) " ,
+    position=(maximum(x)*0.0, rate_ss.*1e10+0.1),
     align = (:left, :bottom), fontsize = line_text)
-    lines = lines!(ax3, x, -1e10.*ca_rate_fd(sol.u[1][:,1], sol.u[1][:,2], sol.u[1][:,3], μₘ, Ka, Kd, Ya), color = (ashgray, 0.6), label = "Transient profiles",
+    lines = lines!(ax3, x, -1e10.*ca_rate_fd(sol.u[1][:,1], sol.u[1][:,2], sol.u[1][:,3], μₘ, Ka, Kd, Ya), color = (ashgray, 0.0), label = "Transient profiles",
         linewidth = minor_line)
-    for i in 2:10:(length(sol.t)-1)
-        lines = lines!(ax3, x, -1e10.*ca_rate_fd(sol.u[i][:,1], sol.u[i][:,2], sol.u[i][:,3], μₘ, Ka, Kd, Ya), color = (ashgray, 0.6), label = "Transient Profiles",
+    k = 1
+    for i in pvs_index1
+        lines = lines!(ax3, x, -1e10.*ca_rate_fd(sol.u[i][:,1], sol.u[i][:,2], sol.u[i][:,3], μₘ, Ka, Kd, Ya), color = (scale[k], 0.7), label = "Transient Profiles",
         linewidth = minor_line)
+        k+=1
     end
-    last_line = lines!(ax3, x, -1e10.*ca_rate_fd(sol.u[end][:,1], sol.u[end][:,2], sol.u[end][:,3], μₘ, Ka, Kd, Ya), color = (glaucous, 0.6), label = "Transient Profiles",
+    last_line = lines!(ax3, x, -1e10.*ca_rate_fd(sol.u[end][:,1], sol.u[end][:,2], sol.u[end][:,3], μₘ, Ka, Kd, Ya),
+     color = final_color, # label = "Transient Profiles",
     linewidth = major_line)
-    lines!(ax3, xl, ss_r_line, color = :darkred, linestyle = :dash, label = "steady-state reaction rate",
+    lines!(ax3, xl, ss_r_line, color = crimson, linestyle = :dash, label = "steady-state reaction rate",
         linewidth = major_line)
 
     ax4 = Axis(fig[4:6,6:10], xlabel = "x [m]", xlabelsize = labelsize,
         xticklabelsize = ticksize,
         ylabel = "B [mol L⁻¹]", ylabelsize = labelsize,
         yticklabelsize = ticksize,
-        xgridwidth = 0.5, ygridwidth = 0.5)
+        xgridwidth = 0.5, ygridwidth = 0.5,
+        width = width, height = height)
     ax4.xticks = 0:2:10
     ax4.yticks = 0:0.6:2
-    ylims!(ax4, -1e-9, 2)
-    text!(ax4, L"B_{ss} = \frac{\alpha_E}{k_{dec}(1/Y_D - \eta)} - K_B" ,position=(maximum(x)*0.03, Bss.*1e4),
-    align = (:left, :bottom), fontsize = line_text-2)
-    l = lines = lines!(ax4, x, sol.u[1][:,3].*1e4, color = (ashgray, 0.6), label = "Transient profiles",
+    ylims!(ax4, -1e-9, 2.2)
+    text!(ax4, L"B_{ss} = \frac{\alpha_E}{k_{dec}(1/Y_D - \eta)} - K_B" ,
+    position=(maximum(x)*0.03, Bss.*1e4+0.1),
+    align = (:left, :bottom), fontsize = line_text)
+    l = lines = lines!(ax4, x, sol.u[1][:,3].*1e4, color = (ashgray, 0.0), label = "Transient profiles",
         linewidth = minor_line)
-    for i in 2:10:(length(sol.t)-1)
-        lines = lines!(ax4, x, sol.u[i][:,3].*1e4, color = (ashgray, 0.6), label = "Transient profiles",
+    k = 1
+    for i in pvs_index1
+        lines = lines!(ax4, x, sol.u[i][:,3].*1e4, color = (scale[k], 0.7), label = "Transient profiles",
         linewidth = minor_line)
+        k+=1
     end
-    last_line = lines!(ax4, x, sol.u[end][:,3].*1e4, color = (glaucous, 0.6), label = "Final Profile",
+    last_line = lines!(ax4, x, sol.u[end][:,3].*1e4, color = final_color, label = "Final Profile",
     linewidth = major_line)
-    lines!(ax4, xl, bss_line, color = :darkred, linestyle = :dash, label = "Steady-state biomass concentration",
+    lines!(ax4, xl, bss_line, color = crimson, linestyle = :dash, label = "Steady-state biomass concentration",
         linewidth = major_line)
 
     Label(fig[4:6, 6:10, Top()], halign = :left, L"\times 10^{-4}", fontsize = 10)
     # add the scale bar
-    Label(fig[4:6, 6:10, Top()], halign = :center, L"d. $B$", fontsize = title,
-    font = :bold)
+    Label(fig[4:6, 6:10, Top()], halign = :center, "d. Biomass", fontsize = title)
     fig[7,4:7] = Legend(fig, ax, framevisible = false, fontsize = 10, orientation = :horizontal, halign = :center, valign = :top)
+    fig[8,3:8] = Colorbar(fig[8,3:8], limits = (minimum(pvs),maximum(pvs)),
+     colormap=scale, label = "Pore Volumes - Transient profiles", labelsize = 10, ticklabelsize = 8,
+     vertical = false,
+     height = 12, # width = Relative(0.5),
+     ticks = round.(pvs,digits = 1))
+    rowgap!(fig.layout, 2)
+    colgap!(fig.layout, 3)
     # constrain the layout
     resize_to_layout!(fig)
     save(plotsdir("ca_cd_b.svg"), fig)
@@ -432,10 +454,11 @@ end
 # Plotting the steady state concentration of bacteria
 
 # Assuming Ca, Cd, Cd_min, and Ca_min are defined
-Ca = 10 .^(range(log10(6.5e-5), stop=log10(1e-2), length=200))
+Ca = 10 .^(range(log10(ca_min), stop=log10(1e-1), length=2000))
 Fk = k_dec/μₘ
 A = Fk .* (Ca .+ Ka)./Ca
 Cd = A .* Kd ./ (1 .- A)
+crimson = "#DC143C"
 
 
 with_theme(theme_latexfonts()) do
@@ -443,10 +466,10 @@ with_theme(theme_latexfonts()) do
     xhigh = 10. ^(-1.8)
     ylow = 10. ^(-7)
     yhigh = 10. ^(-1.8)
-    fig = Figure(size = (240, 240))
-    ax = Axis(fig[1, 1], xlabel = L"$C_A$ $[mol\, L^{-1}]$", ylabel = L"$C_D$ $[mol\, L^{-1}]$",
-    xlabelsize = 12, ylabelsize = 12,
-    xticklabelsize = 12, yticklabelsize = 12,
+    fig = Figure(size = (300, 300))
+    ax = Axis(fig[1, 1], xlabel = L"$C_A$ [mol L⁻¹]", ylabel = L"$C_D$ [mol L⁻¹]",
+    xlabelsize = 11, ylabelsize = 11,
+    xticklabelsize = 9, yticklabelsize = 9,
     limits = (xlow, xhigh, ylow, yhigh),
     xscale = CairoMakie.log10, yscale = CairoMakie.log10,
     xminorticksvisible = true, xminorgridvisible = true,
@@ -463,19 +486,18 @@ with_theme(theme_latexfonts()) do
     # Plot Cd_min and Ca_min lines
     Cd_line = range(cd_min, stop=1e-2, length=100)
     Ca_line = range(ca_min, stop=1e-2, length=100)
-    lines!(ax, xlow:1e-7:xhigh, cd_min .* ones(length(xlow:1e-7:xhigh)), linestyle = (:dash,:loose), color = :black, linewidth = 2.2)
-    lines!(ax, ca_min .* ones(length(ylow:1e-7:yhigh)), ylow:1e-7:yhigh, linestyle = (:dashdot,:loose), color = :black, linewidth = 2.2)
-    text!(ax, L"C_{D,min}", position=(10. ^-4, cd_min), fontsize = 16, color = :black, align = (:left, :bottom), justification = :right)
-    text!(ax, L"C_{A,min}", position=(ca_min, 10. ^-6.3), fontsize = 16, color = :black,
+    lines!(ax, xlow:1e-7:xhigh, cd_min .* ones(length(xlow:1e-7:xhigh)), linestyle = :solid, color = crimson, linewidth = 1.1)
+    lines!(ax, ca_min .* ones(length(ylow:1e-7:yhigh)), ylow:1e-7:yhigh, linestyle = :solid, color = crimson, linewidth = 1.1)
+    text!(ax, L"C_{D,min}", position=(10. ^-4, cd_min), fontsize = 12, color = :black, align = (:left, :bottom), justification = :right)
+    text!(ax, L"C_{A,min}", position=(ca_min, 10. ^-6.3), fontsize = 12, color = :black,
      align = (:left, :bottom), justification = :right, rotation = deg2rad(90))
     # Set axis properties
     reset_limits!(ax)
     ax.aspect = DataAspect()
-    # axislegend(ax, position = :rt)
-    # ax.xscale = CairoMakie.log10
-    # ax.yscale = CairoMakie.log10
     resize_to_layout!(fig)
     save(plotsdir("cacd.svg"), fig)
     save(plotsdir("cacd.png"), fig, px_per_unit = 1200/96)
+    # tight
+    
 end
 
