@@ -287,14 +287,14 @@ A = Fk .* (Ca .+ Ka)./Ca
 Cd = A .* Kd ./ (1 .- A)
 crimson = "#DC143C"
 pvs = pore_volume.(sol.t) # calculate the pore volumes
-pvs_index0 = findall(pvs .<= 2.2) # selecint the pore volumes to plot
-pvs_index1 = pvs_index0[2:20:end]
-pvs = pvs[pvs .<= 2.2]
-pvs = pvs[2:20:end]
+inv_pv = [0.1,0.3, 0.5, 1, 2, 10]
+pvs_index1 = [findfirst(pvs .>= i) for i in inv_pv]
+pvs = pvs[pvs_index1]
 color_values = (pvs)
-scale = cgrad(:imola10, color_values ./ maximum(color_values), rev = true,# scale = :exp,
-    categorical = true)
+scale = cgrad(:starrynight, color_values, rev = true, scale = :exp,
+    categorical = false)
 final_color = "#0B192C"
+pvs_max = maximum(pvs)
 with_theme(theme_latexfonts()) do
     labelsize = 11
     ticksize = 10
@@ -324,11 +324,12 @@ with_theme(theme_latexfonts()) do
     lines!(ax, x, ca_min_line, color = :darkblue, linestyle = :dash,
         linewidth = major_line)
     text!(ax, L"C_{A,min}" ,position=(maximum(x)*0.3, 1e4*(ca_min+0.1e-4)), fontsize = line_text)
-    lines = lines!(ax, x, 1e4.*sol.u[1][:,1], color = (ashgray, 0.7), label = "Transient profiles",
+    lines = lines!(ax, x, 1e4.*sol.u[1][:,1], color = (ashgray, 0.7), # label = "Transient profiles",
         linewidth = minor_line)
     k = 1
     for i in pvs_index1# 2:10:(length(sol.t)-1)
-        lines3 = lines!(ax, x, 1e4.*sol.u[i][:, 1], color = (scale[k], 0.7),
+        k = findfirst(pvs_max.*scale.values .>= pore_volume(sol.t[i]))
+        lines3 = lines!(ax, x, 1e4.*sol.u[i][:, 1], color = (scale[k], 0.9),
         linewidth = minor_line)
         k+=1
     end
@@ -364,8 +365,9 @@ with_theme(theme_latexfonts()) do
         linewidth = minor_line)
     k = 1
     for i in pvs_index1
-        lines3 = lines!(ax2, x, 1e5.*sol.u[i][:, 2], color = (scale[k], 0.7),
-        linewidth = 2.9)
+        k = findfirst(pvs_max.*scale.values .>= pore_volume(sol.t[i]))
+        lines3 = lines!(ax2, x, 1e5.*sol.u[i][:, 2], color = (scale[k], 0.9),
+        linewidth = minor_line)
         k+=1
     end
     lastline = lines!(ax2, x, 1e5.*sol.u[end][:, 2], color = final_color, label = "Profile at $(pore_volume(sol.t[end])) PV",
@@ -398,7 +400,8 @@ with_theme(theme_latexfonts()) do
         linewidth = minor_line)
     k = 1
     for i in pvs_index1
-        lines = lines!(ax3, x, -1e10.*ca_rate_fd(sol.u[i][:,1], sol.u[i][:,2], sol.u[i][:,3], μₘ, Ka, Kd, Ya), color = (scale[k], 0.7), label = "Transient Profiles",
+        k = findfirst(pvs_max.*scale.values .>= pore_volume(sol.t[i]))
+        lines = lines!(ax3, x, -1e10.*ca_rate_fd(sol.u[i][:,1], sol.u[i][:,2], sol.u[i][:,3], μₘ, Ka, Kd, Ya), color = (scale[k], 0.9), label = "Transient Profiles",
         linewidth = minor_line)
         k+=1
     end
@@ -420,28 +423,29 @@ with_theme(theme_latexfonts()) do
     text!(ax4, L"B_{ss} = \frac{\alpha_E}{k_{dec}(1/Y_D - \eta)} - K_B" ,
     position=(maximum(x)*0.03, Bss.*1e4+0.1),
     align = (:left, :bottom), fontsize = line_text)
-    l = lines = lines!(ax4, x, sol.u[1][:,3].*1e4, color = (ashgray, 0.0), label = "Transient profiles",
+    l = lines = lines!(ax4, x, sol.u[1][:,3].*1e4, color = (ashgray, 0.0), # label = "Transient profiles",
         linewidth = minor_line)
     k = 1
     for i in pvs_index1
-        lines = lines!(ax4, x, sol.u[i][:,3].*1e4, color = (scale[k], 0.7), label = "Transient profiles",
+        k = findfirst(pvs_max.*scale.values .>= pore_volume(sol.t[i]))
+        lines = lines!(ax4, x, sol.u[i][:,3].*1e4, color = (scale[k], 0.9), label = "$(round(pore_volume(sol.t[i]), digits = 1))",
         linewidth = minor_line)
         k+=1
     end
-    last_line = lines!(ax4, x, sol.u[end][:,3].*1e4, color = final_color, label = "Final Profile",
+    last_line = lines!(ax4, x, sol.u[end][:,3].*1e4, color = final_color, # label = "Final Profile",
     linewidth = major_line)
-    lines!(ax4, xl, bss_line, color = crimson, linestyle = :dash, label = "Steady-state biomass concentration",
+    lines!(ax4, xl, bss_line, color = crimson, linestyle = :dash, # label = "Steady-state biomass concentration",
         linewidth = major_line)
 
     Label(fig[4:6, 6:10, Top()], halign = :left, L"\times 10^{-4}", fontsize = 10)
     # add the scale bar
     Label(fig[4:6, 6:10, Top()], halign = :center, "d. Biomass", fontsize = title)
     fig[7,4:7] = Legend(fig, ax, framevisible = false, fontsize = 10, orientation = :horizontal, halign = :center, valign = :top)
-    fig[8,3:8] = Colorbar(fig[8,3:8], limits = (minimum(pvs),maximum(pvs)),
-     colormap=scale, label = "Pore Volumes - Transient profiles", labelsize = 10, ticklabelsize = 8,
-     vertical = false,
-     height = 12, # width = Relative(0.5),
-     ticks = round.(pvs,digits = 1))
+    fig[8,3:8] = Legend(fig[8,3:8], ax4, "Pore Volumes - Transient profiles", framevisible = false, fontsie = 10,
+     orientation = :horizontal, halign = :center, valign = :top,)
+    #  vertical = false,
+    #  height = 12, # width = Relative(0.5),
+    #  ticks = round.(pvs,digits = 1))
     rowgap!(fig.layout, 2)
     colgap!(fig.layout, 3)
     # constrain the layout
@@ -630,7 +634,7 @@ with_theme(theme_latexfonts()) do
 
     fig[7,4:7] = Legend(fig, ax, framevisible = false, fontsize = 10, orientation = :horizontal, halign = :center, valign = :top)
     fig[8,3:8] = Colorbar(fig[8,3:8], limits = (minimum(pvs),maximum(pvs)),
-     colormap=scale, label = "Pore Volumes - Transient profiles", labelsize = 10, ticklabelsize = 8,
+     colormap=aniscale, label = "Pore Volumes - Transient profiles", labelsize = 10, ticklabelsize = 8,
      vertical = false,
      height = 12, # width = Relative(0.5),
      ticks = round.(0:0.5:2,digits = 1))
