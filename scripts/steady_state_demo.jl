@@ -450,8 +450,8 @@ with_theme(theme_latexfonts()) do
     colgap!(fig.layout, 3)
     # constrain the layout
     resize_to_layout!(fig)
-    save(plotsdir("ca_cd_b.svg"), fig)
-    save(plotsdir("ca_cd_b.png"), fig, px_per_unit = 1200/96)
+    save(plotsdir("Fig_2.pdf"), fig)
+    save(plotsdir("Fig_2.png"), fig, px_per_unit = 1200/96)
     
 end
 
@@ -499,8 +499,8 @@ with_theme(theme_latexfonts()) do
     reset_limits!(ax)
     ax.aspect = DataAspect()
     resize_to_layout!(fig)
-    save(plotsdir("cacd.svg"), fig)
-    save(plotsdir("cacd.png"), fig, px_per_unit = 1200/96)
+    save(plotsdir("Fig_1.pdf"), fig)
+    save(plotsdir("Fig_1.png"), fig, px_per_unit = 1200/96)
     # tight
     
 end
@@ -512,18 +512,18 @@ pvs = pore_volume.(sol.t) # calculate the pore volumes
 pvs_index0 = findall(pvs .<= 2.2) # selecint the pore volumes to plot
 pvs = pvs[pvs_index0]
 color_values = (pvs)
-aniscale = cgrad(:imola, pvs ./ maximum(pvs), rev = true,# scale = :exp,
+aniscale = cgrad(:starrynight, pvs ./ maximum(pvs), rev = true,# scale = :exp,
     categorical = true)
 with_theme(theme_latexfonts()) do
-    labelsize = 11
-    ticksize = 10
-    line_text = 10
+    labelsize = 10
+    ticksize = 9
+    line_text = 6
     minor_line = 1.5
     major_line = 2.6
-    title = 12
-    width = 225
+    title = 9
+    width = 100
     height = 8/10*width
-    fig = Figure( size = (6.8*96, 6*96))
+    fig = Figure(size = (480, 360))
     xl = 0:0.01:L
     ss_line = cₐ .- rate_ss/v .* xl
     ss_line = collect(ss_line)
@@ -618,10 +618,10 @@ with_theme(theme_latexfonts()) do
     # add the scale bar
     Label(fig[4:6, 6:10, Top()], halign = :center, "d. Biomass", fontsize = title)
 
-    rowgap!(fig.layout, 2)
-    colgap!(fig.layout, 3)
+    rowgap!(fig.layout, 1.)
+    colgap!(fig.layout, 2.)
     # constrain the layout
-    resize_to_layout!(fig)
+    # 
 
     lines1 = lines!(ax, x, 1e4.*sol.u[1][:,1], color = (ashgray, 0.0), label = "Transient profiles",
     linewidth = major_line)
@@ -632,15 +632,15 @@ with_theme(theme_latexfonts()) do
     lines4 = lines!(ax4, x, sol.u[1][:,3].*1e4, color = (ashgray, 0.0), label = "Transient profiles",
     linewidth = major_line)
 
-    fig[7,4:7] = Legend(fig, ax, framevisible = false, fontsize = 10, orientation = :horizontal, halign = :center, valign = :top)
+    fig[7,4:7] = Legend(fig, ax, framevisible = false, labelsize = 8, orientation = :horizontal, halign = :center, valign = :top)
     fig[8,3:8] = Colorbar(fig[8,3:8], limits = (minimum(pvs),maximum(pvs)),
-     colormap=aniscale, label = "Pore Volumes - Transient profiles", labelsize = 10, ticklabelsize = 8,
+     colormap=aniscale, label = "Pore Volumes - Transient profiles", labelsize = 8, ticklabelsize = 6,
      vertical = false,
-     height = 12, # width = Relative(0.5),
+     height = 6, # width = Relative(0.5),
      ticks = round.(0:0.5:2,digits = 1))
-
+    resize_to_layout!(fig)
     k = 1
-    record(fig, plotsdir("ca_cd_ani.mp4"), pvs_index0[2:end]; framerate = 20) do i
+    record(fig, plotsdir("WEO_animation.mp4"), pvs_index0[2:end]; framerate = 15) do i
         lines1[2] = 1e4.*sol.u[i][:,1]
         lines1.color = (aniscale[k], 0.7)
         lines2[2] = 1e5.*sol.u[i][:,2]
