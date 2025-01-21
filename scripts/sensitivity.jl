@@ -63,9 +63,11 @@ with_theme(theme_latexfonts()) do
         ylabel = L"\text{Parameters}\, p",
         xlabel = L"\left| \frac{\partial}{\partial p} B_{ss} \right|",
         yticks = (1:length(param_names), param_names[sorted_idx_bss]),
-        xticks = [0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6],
+        #xticks = [0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6],
         #xticklabelsize = tickfont,
-        xscale = Makie.pseudolog10)
+        xscale = Makie.log10,
+        #xtickformat = values -> [L"10^{%$(log10(value))}" for value in values]
+        )
     
     # Second subplot for rss sensitivities
     ticks = [0, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-0]
@@ -83,7 +85,7 @@ with_theme(theme_latexfonts()) do
     barplot!(ax2, 1:length(param_names), abs.(rss_sen[sorted_idx_bss]), direction=:x)
     
     # Add zero lines
-    vlines!(ax1, 1e-10, color=:black, linestyle=:dash)
+    vlines!(ax1, 0, color=:black, linestyle=:dash)
     vlines!(ax2, 0.7e-10, color=:black, linestyle=:dash)
     
     fig
