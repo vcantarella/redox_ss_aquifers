@@ -384,7 +384,7 @@ with_theme(theme_latexfonts()) do
         yticklabelsize = ticksize,
         xgridwidth = 0.5, ygridwidth = 0.5,
         width = width, height = height)
-    ax3.xticks = 0:2:10
+    ax3.xticks = 0:.2:1
     ax3.yticks = 0:1.6:4.8
     ylims!(ax3, -1e-9, 5)
     ss_r_line = rate_ss .* ones(size(xl,1)).*1e10
@@ -638,6 +638,7 @@ with_theme(theme_latexfonts()) do
      vertical = false,
      height = 6, # width = Relative(0.5),
      ticks = round.(0:0.5:2,digits = 1))
+    PVlabel = Label(fig[7, 1:2], "Pore Volumes: $(round(pore_volume(sol.t[1]),digits=2))", fontsize = 9, halign = :left)
     resize_to_layout!(fig)
     k = 1
     record(fig, plotsdir("WEO_animation.mp4"), pvs_index0[2:end]; framerate = 15) do i
@@ -649,6 +650,7 @@ with_theme(theme_latexfonts()) do
         lines3.color = (aniscale[k], 0.7)
         lines4[2] = sol.u[i][:,3].*1e4
         lines4.color = (aniscale[k], 0.7)
+        PVlabel.text = "Pore Volumes: $(round(pore_volume(sol.t[i]),digits=2))"
         k+=1
     end
 end
