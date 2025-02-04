@@ -5,7 +5,7 @@ using Symbolics
 using CairoMakie
 using DifferentialEquations
 using LinearSolve
-
+using DataFrames
 
 println(
 """
@@ -16,20 +16,28 @@ We have the expression for the steady-state biomass and steady-state electron ac
 
 # Define the variables
 
-@variables α k_dec Yd η Kb Ya
+@variables α k_dec Yd η Kb Ya rss0 bss0
 
 Bss_expr =  α/(k_dec*(1/Yd-η)) - Kb
 
 rss_expr =  α/(Ya*(1/Yd-η))-Kb*k_dec/Ya
 
+rel_rss_expr = (rss_expr-rss0)/rss0
+rel_bss_expr = (Bss_expr-bss0)/bss0
 # Compute the sensitivity
 
 sensitivity_Bss = Symbolics.gradient(Bss_expr, [α, k_dec, Yd, η, Kb, Ya])
 sensitivity_rss = Symbolics.gradient(rss_expr, [α, k_dec, Yd, η, Kb, Ya])
+sensitivity_bss_rel = Symbolics.gradient(rel_bss_expr, [α, k_dec, Yd, η, Kb, Ya, bss0])
+sensitivity_rss_rel = Symbolics.gradient(rel_rss_expr, [α, k_dec, Yd, η, Kb, Ya, rss0])
 
 bss_f = eval(build_function(sensitivity_Bss, [α, k_dec, Yd, η, Kb, Ya])[1])
 rss_f = eval(build_function(sensitivity_rss, [α, k_dec, Yd, η, Kb, Ya])[1])
+bss_rel_sen = eval(build_function(sensitivity_bss_rel, [α, k_dec, Yd, η, Kb, Ya, bss0])[1])
+rss_rel_sen = eval(build_function(sensitivity_rss_rel, [α, k_dec, Yd, η, Kb, Ya, rss0])[1])
 
+rss_fun = eval(build_function(rss_expr, [α, k_dec, Yd, η, Kb, Ya]))
+bss_fun = eval(build_function(Bss_expr, [α, k_dec, Yd, η, Kb, Ya]))
 # defining the parameter values
 # Defining the parameters
 α = 8e-10 #[mol L⁻¹ s⁻¹]
@@ -46,12 +54,87 @@ Kd = 1e-6 #[mol L⁻¹]
 bss_sen = bss_f([α, k_dec, Yd, η, Kb, Ya])
 rss_sen = rss_f([α, k_dec, Yd, η, Kb, Ya])
 
+rss = rss_fun([α, k_dec, Yd, η, Kb, Ya])
+bss = bss_fun([α, k_dec, Yd, η, Kb, Ya])
+
+bss_rel = bss_rel_sen([α, k_dec, Yd, η, Kb, Ya, bss])
+rss_rel = rss_rel_sen([α, k_dec, Yd, η, Kb, Ya, rss])
+# Impact of the model sensitivity to the time to model outcomes:
+no30 = 80/62*1e-3
+upper_params = 1.1 .* [α, k_dec, Yd, η, Kb, Ya]
+lower_params = 0.9 .* [α, k_dec, Yd, η, Kb, Ya]
+df = DataFrame(
+    Parameter = ["α", "k_dec", "Yd", "η", "Kb", "Ya"],
+    Value = [α, k_dec, Yd, η, Kb, Ya],
+    Bss = bss,
+    Bss_sensitivity = bss_sen,
+    Rss = rss,
+    Rss_sensitivity = rss_sen,
+    Upper = upper_params,
+    Lower = lower_params,
+    Bss_lower = zeros(Float64, 6),
+    Bss_upper = zeros(Float64, 6),
+    Rss_lower = zeros(Float64, 6),
+    Rss_upper = zeros(Float64, 6),
+)
+
+for i in eachindex(df[!, :Parameter])
+    parameters = [α, k_dec, Yd, η, Kb, Ya]
+    param_low = copy(parameters)
+    param_low[i] = lower_params[i]
+    param_high = copy(parameters)
+    param_high[i] = upper_params[i]
+    df[i, :Bss_lower] = bss_fun(param_low)
+    df[i, :Bss_upper] = bss_fun(param_high)
+    df[i, :Rss_lower] = rss_fun(param_low)
+    df[i, :Rss_upper] = rss_fun(param_high)
+end
+no30/rss
+
+
 # Plot the sensitivities in two horizontal bar plots, one for the bss and one for the rss
 # Parameter names
 # Sort indices by magnitude of bss sensitivity
 param_names = [L"\alpha", L"k_{dec}", L"Y_D", L"\eta", L"K_B", L"Y_A"]
 sorted_idx_bss = sortperm(abs.(bss_sen), rev=false)
 sorted_idx_rss = sortperm(abs.(rss_sen), rev=false)
+params = [α, k_dec, Yd, η, Kb, Ya]
+
+with_theme(theme_latexfonts()) do
+    fig = Figure(size=(800, 400))
+    
+    # First subplot for bss sensitivities
+    ax1 = Axis(fig[1, 1],
+        title = L"B_{ss} \mathrm{~sensitivity}",
+        xlabel = L"\text{Parameters}\, p",
+        ylabel = L" \frac{\partial B_{ss}}{\partial p}\,\frac{p}{B_{ss}}",
+        xticks = (1:length(param_names), param_names[sorted_idx_bss]),
+        yticks = -1.2:0.4:1.2,
+        )
+    
+    # Second subplot for rss sensitivities
+    ticks = [0, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-0]
+    ax2 = Axis(fig[1, 2],
+        title = L"r_{ss} \mathrm{~sensitivity}",
+        xlabel = L"\text{Parameters}\, p", 
+        ylabel = L"\frac{\partial r_{ss}}{\partial p}\,\frac{p}{r_{ss}}",
+        xticks = (1:length(param_names), param_names[sorted_idx_bss]),
+        yticks = -1.2:0.4:1.2,
+        )
+    linkyaxes!(ax1, ax2)
+    strokecolor = :black
+    strokewidth = 0.6
+    # Create horizontal bar plots
+    barplot!(ax1, 1:length(param_names), bss_sen[sorted_idx_bss].*params[sorted_idx_bss]./bss,
+        strokecolor = strokecolor, strokewidth = strokewidth)
+    barplot!(ax2, 1:length(param_names), rss_sen[sorted_idx_bss].*params[sorted_idx_bss]./rss,
+        strokecolor = strokecolor, strokewidth = strokewidth)
+    
+    fig
+    save(plotsdir("sensitivity_bss_rssv2.png"), fig, px_per_unit = 1200/96)
+    save(plotsdir("sensitivity_bss_rssv2.svg"), fig)
+end
+
 
 with_theme(theme_latexfonts()) do
     fig = Figure(size=(800, 400))
@@ -59,39 +142,46 @@ with_theme(theme_latexfonts()) do
     
     # First subplot for bss sensitivities
     ax1 = Axis(fig[1, 1],
-        title = L"B_{ss} \mathrm{~sensitivity}",
-        ylabel = L"\text{Parameters}\, p",
-        xlabel = L"\left| \frac{\partial}{\partial p} B_{ss} \right|",
-        yticks = (1:length(param_names), param_names[sorted_idx_bss]),
+        title = L"B_{ss}",
+        xlabel = L"\text{Parameters}\, p",
+        ylabel = L"\mathrm{Change\, in}\, B_{ss} \, [-]",
+        xticks = (1:length(param_names), param_names[sorted_idx_bss]),
         #xticks = [0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6],
         #xticklabelsize = tickfont,
-        xscale = Makie.log10,
+        #yscale = Makie.log10,
         #xtickformat = values -> [L"10^{%$(log10(value))}" for value in values]
         )
     
     # Second subplot for rss sensitivities
     ticks = [0, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-0]
     ax2 = Axis(fig[1, 2],
-        title = L"r_{ss} \mathrm{~sensitivity}",
-        ylabel = L"\text{Parameters}\, p", 
-        xlabel = L"\left| \frac{\partial}{\partial p} r_{ss} \right|",
-        yticks = (1:length(param_names), param_names[sorted_idx_bss]),
-        xticks = [0, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-0],
-        xscale = log10,
-        xtickformat = values -> [L"10^{%$(log10(value))}" for value in values],
+        title = L"r_{ss}",
+        xlabel = L"\text{Parameters}\, p", 
+        ylabel = L"\mathrm{Change\, in}\, r_{ss} \, [-]",
+        xticks = (1:length(param_names), param_names[sorted_idx_bss]),
+        #xticks = [0, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-0],
+        # yscale = Makie.log10,
+        #xtickformat = values -> [L"10^{%$(log10(value))}" for value in values],
         )
+    linkyaxes!(ax1, ax2)
+    strokecolor = :black
+    strokewidth = 0.6
     # Create horizontal bar plots
-    barplot!(ax1, 1:length(param_names), abs.(bss_sen[sorted_idx_bss]), direction=:x)
-    barplot!(ax2, 1:length(param_names), abs.(rss_sen[sorted_idx_bss]), direction=:x)
-    
-    # Add zero lines
-    vlines!(ax1, 0, color=:black, linestyle=:dash)
-    vlines!(ax2, 0.7e-10, color=:black, linestyle=:dash)
-    
+    barplot!(ax1, 1:length(param_names), (df[!, :Bss_upper][sorted_idx_bss].-bss)./bss,
+        label="Parameters increased by 10%",  strokecolor = strokecolor, strokewidth = strokewidth)
+    barplot!(ax2, 1:length(param_names), (df[!, :Rss_upper][sorted_idx_bss].-rss)./rss,
+        label="Parameters increased by 10%",  strokecolor = strokecolor, strokewidth = strokewidth)
+    barplot!(ax1, 1:length(param_names), (df[!, :Bss_lower][sorted_idx_bss].-bss)./bss,
+        label="Parameters decreased by 10%", color = (:crimson, 0.7),  strokecolor = strokecolor, strokewidth = strokewidth)
+    barplot!(ax2, 1:length(param_names), (df[!, :Rss_lower][sorted_idx_bss].-rss)./rss,
+        label="Parameters increased by 10%", color = (:crimson, 0.7),  strokecolor = strokecolor, strokewidth = strokewidth)
+    Legend(fig[2, 1:2],ax1, framevisible = false, orientation = :horizontal, halign = :center, valign = :top)
+    resize_to_layout!(fig)
     fig
-    save(plotsdir("sensitivity_bss_rss.png"), fig, px_per_unit = 1200/96)
-    save(plotsdir("sensitivity_bss_rss.svg"), fig)
+    save(plotsdir("sensitivity_bss_rss_relat.png"), fig, px_per_unit = 1200/96)
+    save(plotsdir("sensitivity_bss_rss_relat.svg"), fig)
 end
+
 
 #----------------- Apply the sensitivity analysis to the model -----------------
 println(
