@@ -380,11 +380,11 @@ with_theme(theme_latexfonts()) do
 
     ax3 = Axis(fig[1:3, 6:10], xlabelsize = labelsize,
         xticklabelsize = ticksize,
-        ylabel = L"$r_{C_A}$ [mol L⁻¹ s⁻¹]", ylabelsize = labelsize,
+        ylabel = L"$r_{C_A}$ [mol L^{-1} s^{-1}]", ylabelsize = labelsize,
         yticklabelsize = ticksize,
         xgridwidth = 0.5, ygridwidth = 0.5,
         width = width, height = height)
-    ax3.xticks = 0:.2:1
+    ax3.xticks = 0:2:10
     ax3.yticks = 0:1.6:4.8
     ylims!(ax3, -1e-9, 5)
     ss_r_line = rate_ss .* ones(size(xl,1)).*1e10
@@ -452,6 +452,7 @@ with_theme(theme_latexfonts()) do
     resize_to_layout!(fig)
     save(plotsdir("Fig_2.pdf"), fig)
     save(plotsdir("Fig_2.png"), fig, px_per_unit = 1200/96)
+    save(plotsdir("Fig_2.svg"), fig)
     
 end
 
@@ -471,7 +472,7 @@ with_theme(theme_latexfonts()) do
     ylow = 10. ^(-7)
     yhigh = 10. ^(-1.8)
     fig = Figure(size = (300, 300))
-    ax = Axis(fig[1, 1], xlabel = L"$C_A$ [mol L⁻¹]", ylabel = L"$C_D$ [mol L⁻¹]",
+    ax = Axis(fig[1, 1], xlabel = L"$C_A$ [mol L^{-1}]", ylabel = L"$C_D$ [mol L^{-1}]",
     xlabelsize = 11, ylabelsize = 11,
     xticklabelsize = 9, yticklabelsize = 9,
     limits = (xlow, xhigh, ylow, yhigh),
@@ -501,6 +502,7 @@ with_theme(theme_latexfonts()) do
     resize_to_layout!(fig)
     save(plotsdir("Fig_1.pdf"), fig)
     save(plotsdir("Fig_1.png"), fig, px_per_unit = 1200/96)
+    save(plotsdir("Fig_1.svg"), fig)
     # tight
     
 end
